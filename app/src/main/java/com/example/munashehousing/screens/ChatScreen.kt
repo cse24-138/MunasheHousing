@@ -29,6 +29,7 @@ fun ChatScreen(
     onBack: () -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
+    // Requirement E: Persistent Chat History
     val chatHistory by viewModel.getChatHistory(agentName).collectAsState(initial = emptyList())
 
     Scaffold(
@@ -72,7 +73,8 @@ fun ChatScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(items = chatHistory) { msg ->
+            // Using explicit type to avoid inference issues
+            items(chatHistory) { msg: MessageEntity ->
                 ChatBubble(
                     text = msg.text,
                     isFromUser = msg.senderId != agentName,

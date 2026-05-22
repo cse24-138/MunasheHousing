@@ -27,6 +27,48 @@ import com.example.munashehousing.models.UserRole
 import kotlinx.coroutines.launch
 
 @Composable
+fun AppLogo(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(100.dp)
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF0D47A1), Color(0xFF1976D2))
+                ),
+                shape = RoundedCornerShape(24.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(60.dp)) {
+            val width = size.width
+            val height = size.height
+
+            val roofPath = Path().apply {
+                moveTo(width / 2f, 0f)
+                lineTo(width, height * 0.45f)
+                lineTo(0f, height * 0.45f)
+                close()
+            }
+            drawPath(roofPath, Color.White, style = Fill)
+
+            drawRect(
+                color = Color.White,
+                topLeft = androidx.compose.ui.geometry.Offset(width * 0.15f, height * 0.45f),
+                size = androidx.compose.ui.geometry.Size(width * 0.7f, height * 0.55f),
+                style = Fill
+            )
+
+            drawRect(
+                color = Color(0xFF0D47A1),
+                topLeft = androidx.compose.ui.geometry.Offset(width * 0.4f, height * 0.65f),
+                size = androidx.compose.ui.geometry.Size(width * 0.2f, height * 0.35f),
+                style = Fill
+            )
+        }
+    }
+}
+
+@Composable
 fun LoginScreen(
     onLoginSuccess: (UserRole) -> Unit,
     onRegisterClick: () -> Unit
@@ -77,7 +119,7 @@ fun LoginScreen(
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Surface(
@@ -98,7 +140,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Role Switch
                     TabRow(
                         selectedTabIndex = if (selectedRole == UserRole.STUDENT) 0 else 1,
                         containerColor = Color.Transparent,
@@ -144,7 +185,6 @@ fun LoginScreen(
                         onClick = {
                             val isEmailValid = if (selectedRole == UserRole.STUDENT) email.matches(emailRegex) else email.contains("@")
                             if (isEmailValid && password.isNotBlank()) {
-                                // Authenticate using Room
                                 scope.launch {
                                     val db = AppDatabase.getDatabase(context)
                                     val repo = PropertyRepository(db)
@@ -152,7 +192,6 @@ fun LoginScreen(
                                     if (user != null && user.role == selectedRole.name) {
                                         onLoginSuccess(selectedRole)
                                     } else {
-                                        // Allow if it's the default seeded data for testing
                                         if (email.startsWith("cse24-")) {
                                             onLoginSuccess(UserRole.STUDENT)
                                         } else {
