@@ -24,6 +24,7 @@ import com.example.munashehousing.R
 import com.example.munashehousing.data.database.AppDatabase
 import com.example.munashehousing.data.PropertyRepository
 import com.example.munashehousing.models.UserRole
+import com.example.munashehousing.ui.viewmodels.PropertyViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -70,6 +71,7 @@ fun AppLogo(modifier: Modifier = Modifier) {
 
 @Composable
 fun LoginScreen(
+    viewModel: PropertyViewModel,
     onLoginSuccess: (UserRole) -> Unit,
     onRegisterClick: () -> Unit
 ) {
@@ -185,10 +187,7 @@ fun LoginScreen(
                         onClick = {
                             val isEmailValid = if (selectedRole == UserRole.STUDENT) email.matches(emailRegex) else email.contains("@")
                             if (isEmailValid && password.isNotBlank()) {
-                                scope.launch {
-                                    val db = AppDatabase.getDatabase(context)
-                                    val repo = PropertyRepository(db)
-                                    val user = repo.loginUser(email)
+                                viewModel.login(email) { user ->
                                     if (user != null && user.role == selectedRole.name) {
                                         onLoginSuccess(selectedRole)
                                     } else {
