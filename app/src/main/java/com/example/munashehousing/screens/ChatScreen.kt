@@ -10,6 +10,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.munashehousing.R
 import com.example.munashehousing.data.database.MessageEntity
+import com.example.munashehousing.models.UserRole
 import com.example.munashehousing.ui.viewmodels.PropertyViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,16 +29,28 @@ import com.example.munashehousing.ui.viewmodels.PropertyViewModel
 fun ChatScreen(
     agentName: String,
     viewModel: PropertyViewModel,
+    userRole: UserRole, // ADDED: Matches the new parameter passed from MainActivity
     onBack: () -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
+
     // Requirement E: Persistent Chat History
     val chatHistory by viewModel.getChatHistory(agentName).collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(agentName, fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text(agentName, fontWeight = FontWeight.Bold)
+                        // Shows the role of the person you are talking to
+                        Text(
+                            text = if (userRole == UserRole.STUDENT) "Landlord / Agent" else "Student",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -57,6 +72,7 @@ fun ChatScreen(
                 )
                 IconButton(onClick = {
                     if (messageText.isNotBlank()) {
+                        // Pass the message to the viewmodel
                         viewModel.sendMessage(agentName, messageText)
                         messageText = ""
                     }
@@ -73,10 +89,10 @@ fun ChatScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Using explicit type to avoid inference issues
             items(chatHistory) { msg: MessageEntity ->
                 ChatBubble(
                     text = msg.text,
+                    // If the senderId is NOT the agentName, it means the current user sent it
                     isFromUser = msg.senderId != agentName,
                     status = if (msg.isSeen) "seen" else "sent"
                 )

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,11 +23,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.munashehousing.R
-import com.example.munashehousing.data.database.AppDatabase
-import com.example.munashehousing.data.PropertyRepository
 import com.example.munashehousing.models.UserRole
 import com.example.munashehousing.ui.viewmodels.PropertyViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun AppLogo(modifier: Modifier = Modifier) {
@@ -72,11 +71,10 @@ fun AppLogo(modifier: Modifier = Modifier) {
 @Composable
 fun LoginScreen(
     viewModel: PropertyViewModel,
-    onLoginSuccess: (UserRole) -> Unit,
+    onLoginSuccess: (UserRole, String) -> Unit, // UPDATED: Now accepts Role and Email
     onRegisterClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf(UserRole.STUDENT) }
@@ -189,10 +187,12 @@ fun LoginScreen(
                             if (isEmailValid && password.isNotBlank()) {
                                 viewModel.login(email) { user ->
                                     if (user != null && user.role == selectedRole.name) {
-                                        onLoginSuccess(selectedRole)
+                                        // FIX: Pass selectedRole and the actual email
+                                        onLoginSuccess(selectedRole, email)
                                     } else {
+                                        // Emergency bypass for specific IDs
                                         if (email.startsWith("cse24-")) {
-                                            onLoginSuccess(UserRole.STUDENT)
+                                            onLoginSuccess(UserRole.STUDENT, email)
                                         } else {
                                             Toast.makeText(context, "Invalid credentials or role", Toast.LENGTH_SHORT).show()
                                         }

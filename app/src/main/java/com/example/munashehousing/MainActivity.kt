@@ -2,7 +2,6 @@ package com.example.munashehousing
 
 import android.content.Context
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
@@ -15,7 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,8 +54,8 @@ fun MunasheHousingApp(
     viewModel: PropertyViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val sharedPreferences = remember { 
-        context.getSharedPreferences("munashe_housing_prefs", Context.MODE_PRIVATE) 
+    val sharedPreferences = remember {
+        context.getSharedPreferences("munashe_housing_prefs", Context.MODE_PRIVATE)
     }
 
     LaunchedEffect(Unit) {
@@ -63,9 +64,9 @@ fun MunasheHousingApp(
         repo.seedDatabase()
     }
 
-    var currentScreen by rememberSaveable { 
+    var currentScreen by rememberSaveable {
         val loggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
-        mutableStateOf(if (loggedIn) "home" else "welcome") 
+        mutableStateOf(if (loggedIn) "home" else "welcome")
     }
 
     var userRole by rememberSaveable {
@@ -73,11 +74,14 @@ fun MunasheHousingApp(
         mutableStateOf(UserRole.valueOf(roleStr))
     }
 
+    var userEmail by rememberSaveable {
+        mutableStateOf(sharedPreferences.getString("userEmail", "Guest") ?: "Guest")
+    }
+
     var activeTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedPropertyId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedAgentName by remember { mutableStateOf("") }
-    
-    // Receipt States
+
     var receiptRef by rememberSaveable { mutableStateOf("") }
     var receiptAmount by rememberSaveable { mutableIntStateOf(0) }
     var receiptPlan by rememberSaveable { mutableStateOf("") }
@@ -101,23 +105,34 @@ fun MunasheHousingApp(
         "welcome" -> WelcomeScreen(onStart = { currentScreen = "login" })
         "login" -> LoginScreen(
             viewModel = viewModel,
-            onLoginSuccess = { role ->
+            onLoginSuccess = { role, email ->
                 userRole = role
-                sharedPreferences.edit().putBoolean("isLoggedIn", true).putString("userRole", role.name).apply()
+                userEmail = email
+                sharedPreferences.edit()
+                    .putBoolean("isLoggedIn", true)
+                    .putString("userRole", role.name)
+                    .putString("userEmail", email)
+                    .apply()
                 currentScreen = "home"
             },
             onRegisterClick = { currentScreen = "register" }
         )
         "register" -> RegisterScreen(
             viewModel = viewModel,
-            onRegisterComplete = { role ->
+            onRegisterComplete = { role, email ->
                 userRole = role
-                sharedPreferences.edit().putBoolean("isLoggedIn", true).putString("userRole", role.name).apply()
+                userEmail = email
+                sharedPreferences.edit()
+                    .putBoolean("isLoggedIn", true)
+                    .putString("userRole", role.name)
+                    .putString("userEmail", email)
+                    .apply()
                 currentScreen = "home"
             }
         )
         "home" -> HomeScreen(
             role = userRole,
+            userEmail = userEmail,
             isDarkMode = isDarkMode,
             onToggleDarkMode = onToggleDarkMode,
             initialTab = activeTab,
@@ -127,7 +142,7 @@ fun MunasheHousingApp(
                 currentScreen = "details"
             },
             onLogout = {
-                sharedPreferences.edit().putBoolean("isLoggedIn", false).apply()
+                sharedPreferences.edit().putBoolean("isLoggedIn", false).putString("userEmail", "Guest").apply()
                 currentScreen = "login"
             },
             onChatClick = { agentName ->
@@ -146,7 +161,7 @@ fun MunasheHousingApp(
             currentMax = 10000,
             onApply = { min, max ->
                 viewModel.updatePriceRange(min, max)
-                viewModel.saveUserPreferences(viewModel.currentUser.value?.id ?: "user123", min, max, "")
+                viewModel.saveUserPreferences(userEmail, min, max, "")
                 currentScreen = "home"
             },
             onBack = { currentScreen = "home" }
@@ -165,7 +180,6 @@ fun MunasheHousingApp(
                     receiptRef = ref
                     receiptPlan = if (isUpfront) "Upfront (6 Months)" else "Monthly"
                     receiptAmount = if (isUpfront) (property.price * 5) + property.deposit else property.price + property.deposit
-                    
                     viewModel.reserveProperty(property)
                     currentScreen = "receipt"
                 },
@@ -182,18 +196,19 @@ fun MunasheHousingApp(
             )
         }
         "chat" -> ChatScreen(
-            agentName = selectedAgentName, 
+            agentName = selectedAgentName,
             viewModel = viewModel,
+            userRole = userRole,
             onBack = { activeTab = 1; currentScreen = "home" }
         )
-        "reservations" -> ReservationsScreen(onBack = { activeTab = 2; currentScreen = "home" })
-        "settings" -> SettingsScreen(onBack = { activeTab = 2; currentScreen = "home" })
-        "help" -> HelpSupportScreen(onBack = { activeTab = 2; currentScreen = "home" })
+        "reservations" -> ReservationsScreen(email = userEmail, onBack = { activeTab = 2; currentScreen = "home" })
+        "settings" -> SettingsScreen(email = userEmail, onBack = { activeTab = 2; currentScreen = "home" })
+        "help" -> HelpSupportScreen(role = userRole, onBack = { activeTab = 2; currentScreen = "home" })
         "add_property" -> AddPropertyScreen(
             viewModel = viewModel,
-            onBack = { 
+            onBack = {
                 activeTab = 0
-                currentScreen = "home" 
+                currentScreen = "home"
             }
         )
     }
@@ -201,7 +216,7 @@ fun MunasheHousingApp(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReservationsScreen(onBack: () -> Unit) {
+fun ReservationsScreen(email: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -214,7 +229,9 @@ fun ReservationsScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(Modifier.padding(padding).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text("Reservations for: $email")
+            Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.no_reservations))
         }
     }
@@ -222,7 +239,7 @@ fun ReservationsScreen(onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(email: String, onBack: () -> Unit) {
     var showLanguageDialog by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
@@ -237,6 +254,8 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
+            Text("Logged in as: $email", style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { showLanguageDialog = true },
                 shape = RoundedCornerShape(12.dp)
@@ -253,12 +272,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                     title = { Text(stringResource(R.string.select_language)) },
                     text = {
                         Column {
-                            run {
-                                TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en")); showLanguageDialog = false }) { Text(stringResource(R.string.english)) }
-                                TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("tn")); showLanguageDialog = false }) { Text(stringResource(R.string.setswana)) }
-                                TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("sn")); showLanguageDialog = false }) { Text(stringResource(R.string.shona)) }
-                                TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("nd")); showLanguageDialog = false }) { Text(stringResource(R.string.ndebele)) }
-                            }
+                            TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en")); showLanguageDialog = false }) { Text(stringResource(R.string.english)) }
+                            TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("tn")); showLanguageDialog = false }) { Text(stringResource(R.string.setswana)) }
+                            TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("sn")); showLanguageDialog = false }) { Text(stringResource(R.string.shona)) }
+                            TextButton(onClick = { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("nd")); showLanguageDialog = false }) { Text(stringResource(R.string.ndebele)) }
                         }
                     },
                     confirmButton = { TextButton(onClick = { showLanguageDialog = false }) { Text(stringResource(R.string.close)) } }
@@ -270,7 +287,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HelpSupportScreen(onBack: () -> Unit) {
+fun HelpSupportScreen(role: UserRole, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -283,7 +300,10 @@ fun HelpSupportScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(Modifier.padding(padding).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            val helpText = if (role == UserRole.STUDENT) "Student Support: Find a Home" else "Landlord Support: List your Property"
+            Text(helpText, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.contact_support))
         }
     }

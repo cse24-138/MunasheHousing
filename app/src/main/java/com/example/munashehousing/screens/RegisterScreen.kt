@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,7 +23,7 @@ import com.example.munashehousing.ui.viewmodels.PropertyViewModel
 @Composable
 fun RegisterScreen(
     viewModel: PropertyViewModel,
-    onRegisterComplete: (UserRole) -> Unit
+    onRegisterComplete: (UserRole, String) -> Unit // UPDATED: Added String for email
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf("") }
@@ -52,7 +54,7 @@ fun RegisterScreen(
         ) {
             RadioButton(selected = selectedRole == UserRole.STUDENT, onClick = { selectedRole = UserRole.STUDENT })
             Text(text = stringResource(R.string.student), modifier = Modifier.padding(end = 16.dp))
-            
+
             RadioButton(selected = selectedRole == UserRole.LANDLORD, onClick = { selectedRole = UserRole.LANDLORD })
             Text(text = stringResource(R.string.landlord))
         }
@@ -129,7 +131,7 @@ fun RegisterScreen(
         Button(
             onClick = {
                 val isEmailValid = if (selectedRole == UserRole.STUDENT) email.matches(emailRegex) else email.contains("@")
-                
+
                 when {
                     name.isBlank() || email.isBlank() || password.isBlank() || phone.isBlank() -> {
                         Toast.makeText(context, "Please fill in all required fields", Toast.LENGTH_SHORT).show()
@@ -147,7 +149,8 @@ fun RegisterScreen(
                     else -> {
                         viewModel.registerUser(name, email, phone, selectedRole, id, guardian)
                         Toast.makeText(context, context.getString(R.string.registration_successful), Toast.LENGTH_SHORT).show()
-                        onRegisterComplete(selectedRole)
+                        // FIX: Pass the role AND the email back to MainActivity
+                        onRegisterComplete(selectedRole, email)
                     }
                 }
             },
